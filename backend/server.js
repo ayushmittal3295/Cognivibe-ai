@@ -51,7 +51,8 @@ const PORT = process.env.PORT || 5000;
 sequelize.authenticate()
   .then(() => {
     console.log('MySQL database connected successfully');
-    return sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
+    // return sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
+    return sequelize.sync();
   })
   .then(() => {
     app.listen(PORT, () => {
