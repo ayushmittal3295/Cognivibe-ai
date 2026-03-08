@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const sequelize = require('./config/database');
+const chatRoutes = require('./routes/chat.routes');
 
 // Load environment variables
 dotenv.config();
@@ -30,6 +31,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/mood', moodRoutes);
 app.use('/api/learning', learningRoutes);
+app.use('/api/learning/chat', chatRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -51,7 +53,6 @@ const PORT = process.env.PORT || 5000;
 sequelize.authenticate()
   .then(() => {
     console.log('MySQL database connected successfully');
-    // return sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
     return sequelize.sync();
   })
   .then(() => {

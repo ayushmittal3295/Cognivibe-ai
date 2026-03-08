@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import EmotionDetector from '../ai/EmotionDetector';
 import TeacherAI from '../ai/TeacherAI';
+import ChatbotAI from '../ai/ChatbotAI';
 import gsap from 'gsap';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
@@ -36,6 +37,7 @@ const Dashboard = () => {
   const [modelsLoading, setModelsLoading] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [detectionStatus, setDetectionStatus] = useState('');
+  const [showChatbot, setShowChatbot] = useState(false);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -63,13 +65,10 @@ const Dashboard = () => {
       setCameraError('');
       setDetectionStatus('Initializing camera...');
       
-      // First, set showWebcam to true to render the video element
       setShowWebcam(true);
       
-      // Use setTimeout to ensure video element is rendered
       setTimeout(async () => {
         try {
-          // Now check if videoRef is available
           if (!videoRef.current) {
             throw new Error('Video element not found');
           }
@@ -79,7 +78,6 @@ const Dashboard = () => {
           setDetectionStatus('Requesting camera access...');
           await EmotionDetector.startWebcam(videoRef.current);
           
-          // Make sure video is visible
           if (videoRef.current) {
             videoRef.current.style.width = '100%';
             videoRef.current.style.height = 'auto';
@@ -90,16 +88,12 @@ const Dashboard = () => {
           setModelsLoading(false);
           setDetectionStatus('Detecting emotions...');
           
-          // Start continuous detection with faster interval (500ms)
           EmotionDetector.startContinuousDetection(async (detection) => {
-            // Update UI immediately
             setCurrentMood(detection);
             
-            // Log the detection for debugging
             console.log('Real-time emotion:', detection.emotion, 
                         'confidence:', (detection.confidence * 100).toFixed(1) + '%');
             
-            // Record to database (but don't wait for it)
             recordMood({
               emotion: detection.emotion,
               confidence: detection.confidence,
@@ -107,9 +101,8 @@ const Dashboard = () => {
               metadata: detection.allEmotions
             }).catch(err => console.error('Error recording mood:', err));
             
-            // Update detection status
             setDetectionStatus(`Detected: ${detection.emotion}`);
-          }, 500); // 500ms = 2 times per second for smooth updates
+          }, 500);
           
         } catch (error) {
           console.error('Failed to start webcam:', error);
@@ -211,7 +204,20 @@ const Dashboard = () => {
         </div>
         
         <div className="flex items-center space-x-4">
-          {/* Current Mood Indicator with Animation */}
+          {/* Chatbot Toggle Button */}
+          <button
+            onClick={() => setShowChatbot(!showChatbot)}
+            className={`p-2 rounded-lg transition-colors ${
+              showChatbot ? 'bg-primary-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+            title="AI Learning Assistant"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+          </button>
+
+          {/* Current Mood Indicator */}
           {currentMood && (
             <div className="flex items-center space-x-3 glass px-4 py-2 rounded-full animate-pulse">
               <span className="text-2xl">{EmotionDetector.getEmotionEmoji?.(currentMood.emotion) || '😐'}</span>
@@ -308,7 +314,6 @@ const Dashboard = () => {
                       </div>
                     </div>
                     
-                    {/* Show all emotions in real-time */}
                     {currentMood.allEmotions && (
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                         {Object.entries(currentMood.allEmotions)
@@ -450,8 +455,38 @@ const Dashboard = () => {
               ))}
             </div>
           </div>
+
+          {/* Chatbot Prompt */}
+          {currentMood && !showChatbot && (
+            <div className="mt-4 p-4 bg-gradient-to-r from-primary-600/20 to-purple-600/20 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-300">
+                    💬 Need help or have questions? Your AI learning assistant is here!
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Get personalized help based on your current mood
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowChatbot(true)}
+                  className="px-4 py-2 bg-primary-600 rounded-lg text-sm hover:bg-primary-700 transition-colors"
+                >
+                  Chat Now
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Chatbot Component */}
+      {showChatbot && (
+        <ChatbotAI 
+          currentMood={currentMood} 
+          onClose={() => setShowChatbot(false)}
+        />
+      )}
     </div>
   );
 };
