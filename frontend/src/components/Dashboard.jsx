@@ -190,6 +190,37 @@ const Dashboard = () => {
     ]
   };
 
+  // Quiz navigation handlers
+  const handleQuizNavigation = (quizId) => {
+    navigate(`/quiz/${quizId}`);
+  };
+
+  const handleRecommendationClick = (rec) => {
+    if (rec.type === 'quiz') {
+      // Map recommendation titles to quiz IDs
+      const quizMap = {
+        'JavaScript': 'javascript-fundamentals',
+        'React': 'react-hooks',
+        'Python': 'python-basics',
+        'Advanced JavaScript': 'javascript-fundamentals',
+        'React Hooks': 'react-hooks',
+        'Python Basics': 'python-basics'
+      };
+      
+      // Try to find a matching quiz
+      const topic = Object.keys(quizMap).find(key => 
+        rec.title.toLowerCase().includes(key.toLowerCase())
+      );
+      
+      const quizId = quizMap[topic] || 'javascript-fundamentals';
+      navigate(`/quiz/${quizId}`);
+    } else if (rec.type === 'lesson') {
+      navigate(`/learn/${rec.title.toLowerCase().replace(/\s+/g, '-')}`);
+    } else if (rec.type === 'break') {
+      alert(`🧘 Take a ${rec.duration} minute break! Your brain will thank you.`);
+    }
+  };
+
   return (
     <div className="min-h-screen p-8">
       {/* Header */}
@@ -406,20 +437,29 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {recommendations.length > 0 ? (
                 recommendations.map((rec, index) => (
-                  <div key={index} className="bg-gray-800/50 rounded-lg p-4 hover:bg-gray-700/50 transition-colors cursor-pointer"
-                       onClick={() => navigate(`/learn/${rec.title.toLowerCase().replace(/\s+/g, '-')}`)}>
+                  <div 
+                    key={index} 
+                    className="bg-gray-800/50 rounded-lg p-4 hover:bg-gray-700/50 transition-all cursor-pointer transform hover:scale-105"
+                    onClick={() => handleRecommendationClick(rec)}
+                  >
                     <h3 className="font-semibold text-primary-400 mb-2">{rec.title}</h3>
                     <p className="text-sm text-gray-400">{rec.reason}</p>
                     
                     {rec.type === 'quiz' && (
                       <span className="inline-block mt-2 px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
-                        Interactive Quiz
+                        Interactive Quiz 🧠
+                      </span>
+                    )}
+                    
+                    {rec.type === 'lesson' && (
+                      <span className="inline-block mt-2 px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
+                        Learning Path 📚
                       </span>
                     )}
                     
                     {rec.type === 'break' && (
-                      <span className="inline-block mt-2 px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full">
-                        {rec.duration} min break
+                      <span className="inline-block mt-2 px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full">
+                        {rec.duration} min break ☕
                       </span>
                     )}
                   </div>
@@ -432,55 +472,61 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Quick Learning Paths */}
+          {/* Featured Quizzes Section */}
           <div className="glass rounded-2xl p-6">
-            <h2 className="text-xl font-semibold mb-4">Continue Learning</h2>
+            <h2 className="text-xl font-semibold mb-4">Featured Quizzes</h2>
             
-            <div className="space-y-4">
-              {['JavaScript', 'React', 'Python'].map((topic) => (
-                <div key={topic} className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
-                  <div>
-                    <h3 className="font-medium">{topic}</h3>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <div className="w-32 h-1 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary-500 rounded-full" style={{ width: '45%' }}></div>
-                      </div>
-                      <span className="text-xs text-gray-400">45%</span>
-                    </div>
-                  </div>
-                  <button className="px-3 py-1 bg-primary-600 rounded-lg text-sm hover:bg-primary-700 transition-colors">
-                    Continue
-                  </button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* JavaScript Quiz Card */}
+              <div 
+                onClick={() => handleQuizNavigation('javascript-fundamentals')}
+                className="bg-gradient-to-br from-yellow-600/20 to-orange-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+              >
+                <div className="text-3xl mb-2">📜</div>
+                <h3 className="font-semibold">JavaScript</h3>
+                <p className="text-xs text-gray-400 mt-1">Mastery Challenge</p>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs text-gray-400">AI Generated</span>
+                  <span className="text-xs bg-yellow-600/30 px-2 py-1 rounded-full">Hard</span>
                 </div>
-              ))}
+              </div>
+              
+              {/* React Quiz Card */}
+              <div 
+                onClick={() => handleQuizNavigation('react-hooks')}
+                className="bg-gradient-to-br from-blue-600/20 to-cyan-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+              >
+                <div className="text-3xl mb-2">⚛️</div>
+                <h3 className="font-semibold">React Hooks</h3>
+                <p className="text-xs text-gray-400 mt-1">Deep Dive</p>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs text-gray-400">AI Generated</span>
+                  <span className="text-xs bg-blue-600/30 px-2 py-1 rounded-full">Medium</span>
+                </div>
+              </div>
+              
+              {/* Python Quiz Card */}
+              <div 
+                onClick={() => handleQuizNavigation('python-basics')}
+                className="bg-gradient-to-br from-green-600/20 to-emerald-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+              >
+                <div className="text-3xl mb-2">🐍</div>
+                <h3 className="font-semibold">Python</h3>
+                <p className="text-xs text-gray-400 mt-1">Fundamentals</p>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs text-gray-400">AI Generated</span>
+                  <span className="text-xs bg-green-600/30 px-2 py-1 rounded-full">Easy</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Chatbot Prompt */}
-          {currentMood && !showChatbot && (
-            <div className="mt-4 p-4 bg-gradient-to-r from-primary-600/20 to-purple-600/20 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-300">
-                    💬 Need help or have questions? Your AI learning assistant is here!
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Get personalized help based on your current mood
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowChatbot(true)}
-                  className="px-4 py-2 bg-primary-600 rounded-lg text-sm hover:bg-primary-700 transition-colors"
-                >
-                  Chat Now
-                </button>
-              </div>
-            </div>
-          )}
+          {/* CHATBOT PROMPT REMOVED - No more "Need help?" box here */}
+          
         </div>
       </div>
 
-      {/* Chatbot Component */}
+      {/* Floating Chatbot Component - This appears as a floating window when button is clicked */}
       {showChatbot && (
         <ChatbotAI 
           currentMood={currentMood} 

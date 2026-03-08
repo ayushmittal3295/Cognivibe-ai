@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const Quiz = () => {
   const { quizId } = useParams();
@@ -13,6 +16,7 @@ const Quiz = () => {
   const [quiz, setQuiz] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState([]);
+  const [userAnswers, setUserAnswers] = useState([]);
   const [timeLeft, setTimeLeft] = useState(0);
   const [quizStarted, setQuizStarted] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
@@ -20,28 +24,32 @@ const Quiz = () => {
   const [showExplanation, setShowExplanation] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [answerFeedback, setAnswerFeedback] = useState(null);
-  const [hint, setHint] = useState('');
-  const [showHint, setShowHint] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [difficulty, setDifficulty] = useState('medium');
   const [streak, setStreak] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [reviewMode, setReviewMode] = useState(false);
-  const [bookmarked, setBookmarked] = useState([]);
-  const [note, setNote] = useState('');
-  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [questionCount, setQuestionCount] = useState(5);
+  const [topic, setTopic] = useState('');
+  const [validationInProgress, setValidationInProgress] = useState(false);
 
   // Timer warning
   const [timerWarning, setTimerWarning] = useState(false);
 
   useEffect(() => {
-    loadQuiz();
+    // Extract topic from quizId
+    const topicMap = {
+      'javascript-fundamentals': 'JavaScript',
+      'react-hooks': 'React',
+      'python-basics': 'Python'
+    };
+    setTopic(topicMap[quizId] || 'JavaScript');
   }, [quizId]);
 
   useEffect(() => {
     if (quizStarted && timeLeft > 0) {
       const timer = setInterval(() => {
         setTimeLeft(prev => {
-          // Warning at 30 seconds
           if (prev === 31) setTimerWarning(true);
           if (prev <= 1) {
             clearInterval(timer);
@@ -56,175 +64,189 @@ const Quiz = () => {
     }
   }, [quizStarted, timeLeft]);
 
-  const loadQuiz = () => {
-    // Advanced quiz data with more features
-    const quizLibrary = {
-      'javascript-fundamentals': {
-        id: 'javascript-fundamentals',
-        title: 'JavaScript Mastery Challenge',
-        description: 'Advanced JavaScript concepts including closures, promises, and ES6+ features',
-        timeLimit: 900, // 15 minutes
-        difficulty: 'hard',
-        points: 1000,
-        category: 'Programming',
-        tags: ['JavaScript', 'Web Development', 'ES6'],
-        prerequisites: ['Basic JavaScript'],
-        questions: [
+  // Generate quiz using Gemini
+  const generateQuiz = async () => {
+    setGenerating(true);
+    try {
+      const token = localStorage.getItem('token');
+      const prompt = `Generate a ${difficulty} level quiz about ${topic} with ${questionCount} multiple-choice questions. 
+      Format the response as a JSON object with this structure:
+      {
+        "title": "Quiz title",
+        "description": "Brief description",
+        "timeLimit": 900,
+        "points": 1000,
+        "category": "${topic}",
+        "tags": ["${topic}", "Programming"],
+        "questions": [
           {
-            id: 1,
-            text: 'What will be the output of: console.log(1 + "2" + "2");',
-            code: 'console.log(1 + "2" + "2");',
-            options: ['"122"', '5', '"14"', 'Error'],
-            correctAnswer: 0,
-            explanation: 'JavaScript performs type coercion. The first + operator sees a number and string, so it converts 1 to "1" and concatenates. Then "12" + "2" = "122".',
-            difficulty: 'easy',
-            points: 10,
-            hint: 'Think about how JavaScript handles different data types with the + operator.',
-            category: 'Type Coercion',
-            timeLimit: 60
-          },
-          {
-            id: 2,
-            text: 'What is the output of this closure?',
-            code: `for (var i = 0; i < 3; i++) {
-  setTimeout(() => console.log(i), 1000);
-}`,
-            options: ['0 1 2', '3 3 3', 'undefined', 'Error'],
-            correctAnswer: 1,
-            explanation: 'var has function scope, not block scope. The loop completes before setTimeout runs, so i is 3 when the callbacks execute.',
-            difficulty: 'hard',
-            points: 25,
-            hint: 'Consider the difference between var and let in loops.',
-            category: 'Closures',
-            timeLimit: 90
-          },
-          {
-            id: 3,
-            text: 'What does the Promise.all() method return?',
-            code: `Promise.all([p1, p2, p3]).then(values => console.log(values));`,
-            options: [
-              'First resolved promise',
-              'Array of all resolved values',
-              'Last resolved promise',
-              'First rejected promise'
-            ],
-            correctAnswer: 1,
-            explanation: 'Promise.all() returns a single promise that resolves to an array of the results of all input promises. It rejects immediately if any promise rejects.',
-            difficulty: 'medium',
-            points: 15,
-            hint: 'Think about waiting for multiple async operations.',
-            category: 'Promises',
-            timeLimit: 75
-          },
-          {
-            id: 4,
-            text: 'What is the result of: [] == ![] ?',
-            options: ['true', 'false', 'undefined', 'TypeError'],
-            correctAnswer: 0,
-            explanation: 'This is a famous JavaScript quirk. ![] is false, so [] == false. Then [] is coerced to "", and "" == false is true.',
-            difficulty: 'hard',
-            points: 30,
-            hint: 'Double equals (==) performs type coercion. Think about truthy/falsy values.',
-            category: 'Type Coercion',
-            timeLimit: 60
-          },
-          {
-            id: 5,
-            text: 'Which statement correctly describes the event loop?',
-            options: [
-              'Executes code in multiple threads',
-              'Handles async callbacks in a single thread',
-              'Creates new threads for promises',
-              'Runs all code synchronously'
-            ],
-            correctAnswer: 1,
-            explanation: 'The event loop allows JavaScript to perform non-blocking operations by offloading operations to the system kernel and processing callbacks when the call stack is empty.',
-            difficulty: 'medium',
-            points: 20,
-            hint: 'Think about how JavaScript handles async operations with a single thread.',
-            category: 'Event Loop',
-            timeLimit: 60
-          }
-        ]
-      },
-      'react-hooks': {
-        id: 'react-hooks',
-        title: 'React Hooks Deep Dive',
-        description: 'Master React hooks with advanced patterns and custom hooks',
-        timeLimit: 1200,
-        difficulty: 'hard',
-        points: 1200,
-        category: 'React',
-        tags: ['React', 'Hooks', 'Frontend'],
-        questions: [
-          {
-            id: 1,
-            text: 'What is the correct order of useEffect execution?',
-            code: `useEffect(() => {
-  console.log('effect');
-  return () => console.log('cleanup');
-}, [dep]);`,
-            options: [
-              'cleanup → effect → render',
-              'render → effect → cleanup',
-              'effect → cleanup → render',
-              'render → cleanup → effect'
-            ],
-            correctAnswer: 3,
-            explanation: 'The component renders first, then the previous cleanup runs (if any), then the new effect runs.',
-            difficulty: 'medium',
-            points: 15,
-            category: 'useEffect'
+            "text": "Question text",
+            "options": ["option1", "option2", "option3", "option4"],
+            "correctAnswer": 0-3 (index of correct option),
+            "explanation": "Detailed explanation why this answer is correct",
+            "difficulty": "${difficulty}",
+            "points": 20,
+            "hint": "A helpful hint",
+            "category": "${topic}"
           }
         ]
       }
-    };
+      Make questions challenging and educational. Include a mix of concept, code, and theory questions.`;
 
-    const selectedQuiz = quizLibrary[quizId] || quizLibrary['javascript-fundamentals'];
-    setQuiz(selectedQuiz);
-    setTimeLeft(selectedQuiz.timeLimit);
-    setDifficulty(selectedQuiz.difficulty);
-    setBookmarked(new Array(selectedQuiz.questions.length).fill(false));
+      const response = await axios.post(`${API_URL}/learning/chat/`, {
+        message: prompt,
+        mood: currentMood
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Parse the AI response
+      const aiResponse = response.data.response;
+      // Extract JSON from response (it might be wrapped in markdown)
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const quizData = JSON.parse(jsonMatch[0]);
+        setQuiz({
+          ...quizData,
+          id: quizId,
+          timeLimit: quizData.timeLimit || 900
+        });
+        setTimeLeft(quizData.timeLimit || 900);
+      }
+    } catch (error) {
+      console.error('Error generating quiz:', error);
+      // Fallback to static quiz if AI fails
+      loadFallbackQuiz();
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Fallback static quiz
+  const loadFallbackQuiz = () => {
+    const fallbackQuiz = {
+      id: quizId,
+      title: `${topic} Fundamentals`,
+      description: `Test your knowledge of ${topic}`,
+      timeLimit: 600,
+      difficulty: difficulty,
+      points: 500,
+      category: topic,
+      tags: [topic],
+      questions: [
+        {
+          id: 1,
+          text: `What is ${topic} primarily used for?`,
+          options: ['Web Development', 'Mobile Apps', 'Data Science', 'All of the above'],
+          correctAnswer: 3,
+          explanation: `${topic} is a versatile language used in many areas.`,
+          difficulty: 'easy',
+          points: 10,
+          hint: 'Think about its common applications.'
+        }
+      ]
+    };
+    setQuiz(fallbackQuiz);
+    setTimeLeft(fallbackQuiz.timeLimit);
   };
 
   const startQuiz = () => {
+    generateQuiz();
     setQuizStarted(true);
-    setAnswers(new Array(quiz.questions.length).fill(null));
   };
 
-  const handleAnswer = (answerIndex) => {
+  const handleAnswer = async (answerIndex) => {
     setSelectedAnswer(answerIndex);
     const question = quiz.questions[currentQuestion];
-    const isCorrect = answerIndex === question.correctAnswer;
     
-    // Update streak
-    if (isCorrect) {
-      setStreak(prev => prev + 1);
-      setAnswerFeedback({
-        correct: true,
-        message: '✅ Correct! Great job!',
-        points: question.points
+    setValidationInProgress(true);
+    
+    try {
+      // Validate answer using Gemini
+      const token = localStorage.getItem('token');
+      const validationPrompt = `Question: "${question.text}"
+Options: ${question.options.join(', ')}
+User selected option ${answerIndex + 1}: "${question.options[answerIndex]}"
+
+Is this correct? The correct answer is index ${question.correctAnswer} (${question.options[question.correctAnswer]}).
+Provide a helpful explanation about why this answer is ${answerIndex === question.correctAnswer ? 'correct' : 'incorrect'}.`;
+
+      const response = await axios.post(`${API_URL}/learning/chat/`, {
+        message: validationPrompt,
+        mood: currentMood
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
+
+      const isCorrect = answerIndex === question.correctAnswer;
       
-      // Show confetti for streaks of 3 or more
-      if (streak >= 2) setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 2000);
-    } else {
-      setStreak(0);
-      setAnswerFeedback({
-        correct: false,
-        message: '❌ Not quite right. Keep learning!',
-        explanation: question.explanation
-      });
+      // Update streak
+      if (isCorrect) {
+        setStreak(prev => prev + 1);
+        setAnswerFeedback({
+          correct: true,
+          message: '✅ Correct! Great job!',
+          points: question.points,
+          explanation: response.data.response || question.explanation
+        });
+        
+        if (streak >= 2) setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 2000);
+      } else {
+        setStreak(0);
+        setAnswerFeedback({
+          correct: false,
+          message: '❌ Not quite right. Keep learning!',
+          explanation: response.data.response || question.explanation
+        });
+      }
+      
+      // Save answer
+      const newAnswers = [...answers];
+      newAnswers[currentQuestion] = answerIndex;
+      setAnswers(newAnswers);
+      
+      // Save user answer for history
+      const newUserAnswers = [...userAnswers];
+      newUserAnswers[currentQuestion] = {
+        question: question.text,
+        selected: answerIndex,
+        correct: isCorrect,
+        explanation: response.data.response || question.explanation
+      };
+      setUserAnswers(newUserAnswers);
+      
+      setShowExplanation(true);
+    } catch (error) {
+      console.error('Error validating answer:', error);
+      // Fallback validation
+      const isCorrect = answerIndex === question.correctAnswer;
+      
+      if (isCorrect) {
+        setStreak(prev => prev + 1);
+        setAnswerFeedback({
+          correct: true,
+          message: '✅ Correct! Great job!',
+          points: question.points,
+          explanation: question.explanation
+        });
+      } else {
+        setStreak(0);
+        setAnswerFeedback({
+          correct: false,
+          message: '❌ Not quite right. Keep learning!',
+          explanation: question.explanation
+        });
+      }
+      
+      const newAnswers = [...answers];
+      newAnswers[currentQuestion] = answerIndex;
+      setAnswers(newAnswers);
+      
+      setShowExplanation(true);
+    } finally {
+      setValidationInProgress(false);
     }
-    
-    // Save answer
-    const newAnswers = [...answers];
-    newAnswers[currentQuestion] = answerIndex;
-    setAnswers(newAnswers);
-    
-    // Show explanation
-    setShowExplanation(true);
   };
 
   const nextQuestion = () => {
@@ -233,7 +255,6 @@ const Quiz = () => {
       setSelectedAnswer(null);
       setShowExplanation(false);
       setAnswerFeedback(null);
-      setShowHint(false);
     } else {
       handleQuizComplete();
     }
@@ -253,7 +274,6 @@ const Quiz = () => {
     let correctCount = 0;
     let totalPoints = 0;
     let earnedPoints = 0;
-    const questionResults = [];
     
     quiz.questions.forEach((q, index) => {
       const isCorrect = answers[index] === q.correctAnswer;
@@ -262,26 +282,17 @@ const Quiz = () => {
         earnedPoints += q.points || 10;
       }
       totalPoints += q.points || 10;
-      
-      questionResults.push({
-        question: q.text,
-        userAnswer: answers[index],
-        correctAnswer: q.correctAnswer,
-        isCorrect,
-        explanation: q.explanation,
-        category: q.category
-      });
     });
     
     const finalScore = (correctCount / quiz.questions.length) * 100;
     setScore(finalScore);
     
-    // Calculate time bonus
-    const timeBonus = Math.max(0, Math.floor((quiz.timeLimit - (quiz.timeLimit - timeLeft)) / 60) * 5);
+    // Calculate bonuses
+    const timeBonus = Math.max(0, Math.floor((quiz.timeLimit - timeLeft) / 60) * 5);
     const bonusPoints = streak >= 3 ? 50 : streak >= 5 ? 100 : 0;
     const finalPoints = earnedPoints + timeBonus + bonusPoints;
     
-    // Submit results with advanced metrics
+    // Submit results
     await submitQuizResult({
       quizId: quiz.id,
       quizTitle: quiz.title,
@@ -295,35 +306,12 @@ const Quiz = () => {
       totalPoints: finalPoints,
       difficulty: quiz.difficulty,
       topics: quiz.tags,
-      questionResults,
-      accuracy: correctCount / quiz.questions.length,
-      pace: (quiz.timeLimit - timeLeft) / quiz.questions.length,
+      answers: userAnswers,
       mood: currentMood?.emotion
     });
     
     setQuizCompleted(true);
     setShowConfetti(finalScore >= 80);
-  };
-
-  const toggleBookmark = () => {
-    const newBookmarked = [...bookmarked];
-    newBookmarked[currentQuestion] = !newBookmarked[currentQuestion];
-    setBookmarked(newBookmarked);
-  };
-
-  const saveNote = () => {
-    if (note.trim()) {
-      // Save note logic - could be sent to backend
-      console.log('Note saved:', note);
-      setNote('');
-      setShowNoteInput(false);
-    }
-  };
-
-  const getHint = () => {
-    const question = quiz.questions[currentQuestion];
-    setHint(question.hint || 'Think about the core concept being tested.');
-    setShowHint(true);
   };
 
   const formatTime = (seconds) => {
@@ -341,12 +329,18 @@ const Quiz = () => {
     return colors[diff] || 'text-gray-400';
   };
 
-  if (!quiz) {
+  if (generating) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading your quiz...</p>
+          <div className="w-20 h-20 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+          <p className="text-xl font-semibold mb-2">Generating Your Quiz...</p>
+          <p className="text-gray-400">AI is creating personalized questions about {topic}</p>
+          <div className="mt-8 flex gap-2 justify-center">
+            <span className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+            <span className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+            <span className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+          </div>
         </div>
       </div>
     );
@@ -360,63 +354,64 @@ const Quiz = () => {
         className="min-h-screen flex items-center justify-center p-4"
       >
         <div className="max-w-3xl w-full glass rounded-2xl p-8">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
-                {quiz.title}
-              </h1>
-              <p className="text-gray-300">{quiz.description}</p>
+          <div className="text-center mb-8">
+            <div className="text-6xl mb-4 animate-bounce">
+              {topic === 'JavaScript' ? '📜' : topic === 'React' ? '⚛️' : '🐍'}
             </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              quiz.difficulty === 'hard' ? 'bg-red-500/20 text-red-400' :
-              quiz.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-              'bg-green-500/20 text-green-400'
-            }`}>
-              {quiz.difficulty.toUpperCase()}
-            </span>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
+              {topic} Quiz
+            </h1>
+            <p className="text-gray-300">AI-Generated • Every attempt is unique!</p>
           </div>
           
-          <div className="flex flex-wrap gap-2 mb-6">
-            {quiz.tags?.map(tag => (
-              <span key={tag} className="px-2 py-1 bg-gray-700 rounded-full text-xs">
-                #{tag}
-              </span>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="p-4 bg-gray-800/30 rounded-lg">
-              <div className="text-sm text-gray-400">Questions</div>
-              <div className="text-2xl font-bold">{quiz.questions.length}</div>
+              <label className="block text-sm text-gray-400 mb-2">Difficulty</label>
+              <select 
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="w-full bg-gray-700 rounded-lg p-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
             </div>
             <div className="p-4 bg-gray-800/30 rounded-lg">
-              <div className="text-sm text-gray-400">Time Limit</div>
-              <div className="text-2xl font-bold">{formatTime(quiz.timeLimit)}</div>
-            </div>
-            <div className="p-4 bg-gray-800/30 rounded-lg">
-              <div className="text-sm text-gray-400">Max Points</div>
-              <div className="text-2xl font-bold">{quiz.points}</div>
-            </div>
-            <div className="p-4 bg-gray-800/30 rounded-lg">
-              <div className="text-sm text-gray-400">Category</div>
-              <div className="text-2xl font-bold">{quiz.category}</div>
+              <label className="block text-sm text-gray-400 mb-2">Questions</label>
+              <select 
+                value={questionCount}
+                onChange={(e) => setQuestionCount(Number(e.target.value))}
+                className="w-full bg-gray-700 rounded-lg p-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="3">3 Questions</option>
+                <option value="5">5 Questions</option>
+                <option value="7">7 Questions</option>
+                <option value="10">10 Questions</option>
+              </select>
             </div>
           </div>
 
-          {quiz.prerequisites && (
-            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-              <h3 className="font-semibold text-yellow-400 mb-2">Prerequisites</h3>
-              <ul className="list-disc list-inside text-sm text-gray-300">
-                {quiz.prerequisites.map(pre => <li key={pre}>{pre}</li>)}
-              </ul>
+          <div className="space-y-4 mb-8">
+            <div className="flex items-center justify-between p-4 bg-primary-600/20 rounded-lg">
+              <span>🤖 AI-Generated Questions</span>
+              <span className="text-primary-400">✓</span>
             </div>
-          )}
+            <div className="flex items-center justify-between p-4 bg-primary-600/20 rounded-lg">
+              <span>✨ Unique Every Time</span>
+              <span className="text-primary-400">✓</span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-primary-600/20 rounded-lg">
+              <span>🧠 Smart Answer Validation</span>
+              <span className="text-primary-400">✓</span>
+            </div>
+          </div>
           
           <button
             onClick={startQuiz}
             className="w-full py-4 bg-gradient-to-r from-primary-600 to-purple-600 rounded-lg font-medium hover:from-primary-700 hover:to-purple-700 transition-all transform hover:scale-105"
           >
-            Start Challenge
+            Generate & Start Quiz
           </button>
         </div>
       </motion.div>
@@ -443,13 +438,13 @@ const Quiz = () => {
               <h2 className="text-3xl font-bold mb-2">
                 {score >= 80 ? '🏆 Excellent!' : score >= 60 ? '👍 Good Job!' : '💪 Keep Practicing!'}
               </h2>
-              <p className="text-gray-400 mb-6">Here's your performance breakdown:</p>
+              <p className="text-gray-400 mb-6">Here's your AI-analyzed performance:</p>
             </div>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="p-4 bg-gray-800/30 rounded-lg text-center">
                 <div className="text-2xl font-bold text-primary-400">
-                  {answers.filter((a, i) => a === quiz.questions[i].correctAnswer).length}
+                  {answers.filter((a, i) => a === quiz.questions[i]?.correctAnswer).length}
                 </div>
                 <div className="text-sm text-gray-400">Correct</div>
               </div>
@@ -471,23 +466,32 @@ const Quiz = () => {
               </div>
             </div>
 
-            {/* Question Review */}
+            {/* AI-Powered Review */}
             <div className="mb-8">
-              <h3 className="font-semibold mb-4">Question Review</h3>
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <span>🤖 AI Review</span>
+                <span className="text-xs bg-primary-600/30 px-2 py-1 rounded-full">Powered by Gemini</span>
+              </h3>
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {quiz.questions.map((q, idx) => {
                   const isCorrect = answers[idx] === q.correctAnswer;
+                  const userAnswer = userAnswers[idx];
                   return (
                     <div 
                       key={idx}
-                      className={`p-3 rounded-lg flex items-center justify-between ${
+                      className={`p-4 rounded-lg ${
                         isCorrect ? 'bg-green-500/10' : 'bg-red-500/10'
                       }`}
                     >
-                      <span className="text-sm">Q{idx + 1}: {q.text.substring(0, 50)}...</span>
-                      <span className={`text-sm font-semibold ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
-                        {isCorrect ? '✓ Correct' : '✗ Incorrect'}
-                      </span>
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="text-sm font-medium">Q{idx + 1}: {q.text}</span>
+                        <span className={`text-sm font-semibold ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                          {isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                        </span>
+                      </div>
+                      {userAnswer?.explanation && (
+                        <p className="text-xs text-gray-400 mt-1">{userAnswer.explanation}</p>
+                      )}
                     </div>
                   );
                 })}
@@ -506,17 +510,30 @@ const Quiz = () => {
                   setQuizStarted(false);
                   setCurrentQuestion(0);
                   setAnswers([]);
+                  setUserAnswers([]);
                   setQuizCompleted(false);
                   setStreak(0);
+                  setQuiz(null);
                 }}
                 className="flex-1 py-3 bg-gray-700 rounded-lg font-medium hover:bg-gray-600 transition-colors"
               >
-                Try Again
+                New Quiz
               </button>
             </div>
           </div>
         </motion.div>
       </>
+    );
+  }
+
+  if (!quiz) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your quiz...</p>
+        </div>
+      </div>
     );
   }
 
@@ -555,7 +572,7 @@ const Quiz = () => {
           </div>
         </div>
         
-        {/* Progress bar with categories */}
+        {/* Progress bar */}
         <div className="relative mb-8">
           <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
             <div 
@@ -565,7 +582,9 @@ const Quiz = () => {
           </div>
           <div className="flex justify-between mt-2 text-xs text-gray-400">
             <span>Start</span>
-            <span>Category: {question.category}</span>
+            <span className="flex items-center gap-1">
+              <span>🤖 AI Generated</span>
+            </span>
             <span>{question.points} pts</span>
           </div>
         </div>
@@ -580,26 +599,6 @@ const Quiz = () => {
         >
           <div className="flex justify-between items-start mb-6">
             <h3 className="text-xl font-semibold">{question.text}</h3>
-            <div className="flex gap-2">
-              <button
-                onClick={toggleBookmark}
-                className={`p-2 rounded-lg transition-colors ${
-                  bookmarked[currentQuestion] ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
-                }`}
-              >
-                <svg className="w-5 h-5" fill={bookmarked[currentQuestion] ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setShowNoteInput(!showNoteInput)}
-                className="p-2 rounded-lg text-gray-400 hover:text-primary-400 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-            </div>
           </div>
           
           {/* Code block if present */}
@@ -609,44 +608,13 @@ const Quiz = () => {
             </pre>
           )}
           
-          {/* Note input */}
-          {showNoteInput && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6"
-            >
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Add a note about this question..."
-                className="w-full bg-gray-800 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                rows="3"
-              />
-              <div className="flex justify-end gap-2 mt-2">
-                <button
-                  onClick={() => setShowNoteInput(false)}
-                  className="px-3 py-1 text-sm text-gray-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveNote}
-                  className="px-3 py-1 text-sm bg-primary-600 rounded-lg hover:bg-primary-700"
-                >
-                  Save Note
-                </button>
-              </div>
-            </motion.div>
-          )}
-          
           {/* Options */}
           <div className="space-y-3 mb-6">
             {question.options.map((option, index) => (
               <button
                 key={index}
-                onClick={() => !showExplanation && handleAnswer(index)}
-                disabled={showExplanation}
+                onClick={() => !showExplanation && !validationInProgress && handleAnswer(index)}
+                disabled={showExplanation || validationInProgress}
                 className={`w-full text-left p-4 rounded-lg transition-all transform hover:scale-[1.02] ${
                   showExplanation && index === question.correctAnswer
                     ? 'bg-green-600/20 border border-green-500'
@@ -672,17 +640,14 @@ const Quiz = () => {
             ))}
           </div>
           
-          {/* Hint section */}
-          {showHint && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg"
-            >
-              <p className="text-sm text-yellow-400">
-                <span className="font-semibold">💡 Hint:</span> {hint}
-              </p>
-            </motion.div>
+          {/* Validation loading */}
+          {validationInProgress && (
+            <div className="mb-6 p-4 bg-primary-500/10 border border-primary-500/20 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-sm text-primary-400">AI is validating your answer...</p>
+              </div>
+            </div>
           )}
           
           {/* Explanation section */}
@@ -698,40 +663,31 @@ const Quiz = () => {
                 {answerFeedback.message}
                 {answerFeedback.correct && ` (+${answerFeedback.points} pts)`}
               </p>
-              <p className="text-sm text-gray-300">{question.explanation}</p>
+              <p className="text-sm text-gray-300">{answerFeedback.explanation}</p>
+              <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                <span>🤖 Validated by Gemini AI</span>
+              </div>
             </motion.div>
           )}
           
           {/* Action buttons */}
           <div className="flex justify-between gap-3">
-            <div className="flex gap-2">
-              <button
-                onClick={previousQuestion}
-                disabled={currentQuestion === 0}
-                className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ← Previous
-              </button>
-              {!showHint && !showExplanation && (
-                <button
-                  onClick={getHint}
-                  className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  💡 Hint
-                </button>
-              )}
-            </div>
+            <button
+              onClick={previousQuestion}
+              disabled={currentQuestion === 0}
+              className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ← Previous
+            </button>
             
-            <div className="flex gap-2">
-              {showExplanation && (
-                <button
-                  onClick={nextQuestion}
-                  className="px-6 py-2 bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors font-medium"
-                >
-                  {currentQuestion === quiz.questions.length - 1 ? 'Complete Quiz' : 'Next Question →'}
-                </button>
-              )}
-            </div>
+            {showExplanation && (
+              <button
+                onClick={nextQuestion}
+                className="px-6 py-2 bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              >
+                {currentQuestion === quiz.questions.length - 1 ? 'Complete Quiz' : 'Next Question →'}
+              </button>
+            )}
           </div>
         </motion.div>
         
