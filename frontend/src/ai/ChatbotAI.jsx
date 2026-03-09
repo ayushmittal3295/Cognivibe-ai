@@ -9,9 +9,67 @@ const ChatbotAI = ({ currentMood, onClose }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
+  
+  // Voice state
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [transcript, setTranscript] = useState('');
+  
   const { user } = useStore();
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  
+  // Refs for voice
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(window.speechSynthesis);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    // Check if browser supports speech recognition
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      setIsSpeechSupported(false);
+      console.warn('Speech recognition not supported in this browser');
+      return;
+    }
+
+    // Initialize speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.continuous = false;
+    recognitionRef.current.interimResults = true;
+    recognitionRef.current.lang = 'en-US';
+
+    // Handle results
+    recognitionRef.current.onresult = (event) => {
+      const current = event.resultIndex;
+      const transcript = event.results[current][0].transcript;
+      setTranscript(transcript);
+      setInputMessage(transcript);
+    };
+
+    recognitionRef.current.onend = () => {
+      setIsListening(false);
+      // Auto-send after silence
+      if (transcript.trim()) {
+        handleSendMessage();
+      }
+    };
+
+    recognitionRef.current.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      if (event.error === 'not-allowed') {
+        alert('Please allow microphone access to use voice input');
+      }
+    };
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -22,6 +80,13 @@ const ChatbotAI = ({ currentMood, onClose }) => {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Speak bot messages when voice is enabled
+  useEffect(() => {
+    if (voiceEnabled && messages.length > 0 && messages[messages.length - 1].sender === 'bot') {
+      speakText(messages[messages.length - 1].text);
+    }
+  }, [messages, voiceEnabled]);
 
   const fetchSuggestions = async (mood) => {
     try {
@@ -35,6 +100,80 @@ const ChatbotAI = ({ currentMood, onClose }) => {
       setSuggestions(response.data.suggestions || []);
     } catch (error) {
       console.error('Error fetching suggestions:', error);
+    }
+  };
+
+  // Text-to-Speech function
+  const speakText = (text) => {
+    if (!synthRef.current || !voiceEnabled) return;
+    
+    // Cancel any ongoing speech
+    synthRef.current.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Get available voices and try to find a good one
+    const voices = synthRef.current.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Google UK') || voice.name.includes('Samantha')
+    );
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+    
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1;
+    
+    // Add mood-based emotion to voice
+    if (currentMood) {
+      switch(currentMood.emotion) {
+        case 'happy':
+          utterance.rate = 1.2;
+          utterance.pitch = 1.2;
+          break;
+        case 'sad':
+          utterance.rate = 0.9;
+          utterance.pitch = 0.9;
+          break;
+        case 'excited':
+          utterance.rate = 1.3;
+          utterance.pitch = 1.1;
+          break;
+        case 'calm':
+          utterance.rate = 0.8;
+          utterance.pitch = 0.9;
+          break;
+        default:
+          // keep default
+      }
+    }
+    
+    synthRef.current.speak(utterance);
+  };
+
+  // Toggle voice input - UPDATED WITH FIX
+  const toggleListening = () => {
+    // 🛑 STOP BOT SPEAKING IMMEDIATELY when user wants to talk
+    if (synthRef.current) {
+      synthRef.current.cancel(); // This cuts off the bot mid-sentence
+    }
+    
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      setTranscript('');
+      recognitionRef.current?.start();
+      setIsListening(true);
+    }
+  };
+
+  // Toggle voice output
+  const toggleVoiceOutput = () => {
+    setVoiceEnabled(!voiceEnabled);
+    if (voiceEnabled) {
+      synthRef.current?.cancel();
     }
   };
 
@@ -52,6 +191,7 @@ const ChatbotAI = ({ currentMood, onClose }) => {
     };
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
+    setTranscript('');
     setIsTyping(true);
 
     try {
@@ -70,7 +210,7 @@ const ChatbotAI = ({ currentMood, onClose }) => {
       const response = await axios.post(`${API_URL}/learning/chat/`, {
         message: userMessageText,
         mood: currentMood,
-        conversationHistory: conversationHistory.slice(-10) // Last 5 exchanges
+        conversationHistory: conversationHistory.slice(-10)
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -93,7 +233,6 @@ const ChatbotAI = ({ currentMood, onClose }) => {
     } catch (error) {
       console.error('Chat error:', error);
       
-      // Friendly error message
       const errorMessage = "I'm having a little trouble connecting right now. Please try again in a moment!";
       
       setMessages(prev => [...prev, {
@@ -149,14 +288,33 @@ const ChatbotAI = ({ currentMood, onClose }) => {
             </span>
           )}
         </div>
-        <button 
-          onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center space-x-1">
+          {/* Voice Output Toggle */}
+          <button
+            onClick={toggleVoiceOutput}
+            className={`p-1.5 rounded-lg transition-colors ${
+              voiceEnabled ? 'text-primary-400 hover:text-primary-300' : 'text-gray-500 hover:text-gray-400'
+            }`}
+            title={voiceEnabled ? 'Mute voice' : 'Unmute voice'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {voiceEnabled ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+              )}
+            </svg>
+          </button>
+          {/* Close Button */}
+          <button 
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors p-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
@@ -166,7 +324,11 @@ const ChatbotAI = ({ currentMood, onClose }) => {
             <div className="text-6xl mb-4 animate-bounce">👋</div>
             <p className="text-lg font-semibold text-white mb-2">Hey {user?.name || 'there'}!</p>
             <p className="text-sm mb-4">I'm Cogni, your personal AI learning assistant</p>
-            <p className="text-xs text-gray-500">Ask me anything about programming, get project ideas, or just chat!</p>
+            <p className="text-xs text-gray-500">
+              {isSpeechSupported 
+                ? "Try the microphone button below to speak!" 
+                : "Type your questions below"}
+            </p>
             <div className="mt-6 flex justify-center space-x-2">
               <span className="px-2 py-1 bg-primary-600/20 rounded-full text-xs">JavaScript</span>
               <span className="px-2 py-1 bg-primary-600/20 rounded-full text-xs">Python</span>
@@ -209,6 +371,19 @@ const ChatbotAI = ({ currentMood, onClose }) => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Voice Status Indicator */}
+      {isListening && (
+        <div className="px-4 py-2 bg-primary-600/20 border-t border-primary-500/50">
+          <div className="flex items-center space-x-2">
+            <div className="relative">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+              <div className="w-2 h-2 bg-red-500 rounded-full absolute top-0"></div>
+            </div>
+            <span className="text-sm text-primary-300">Listening: "{transcript}"</span>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="p-4 border-t border-gray-700">
         <div className="flex items-center space-x-2">
@@ -222,6 +397,25 @@ const ChatbotAI = ({ currentMood, onClose }) => {
             rows="1"
             style={{ maxHeight: '100px' }}
           />
+          
+          {/* Voice Input Button */}
+          {isSpeechSupported && (
+            <button
+              onClick={toggleListening}
+              className={`p-2 rounded-lg transition-colors ${
+                isListening 
+                  ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+                  : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+              title={isListening ? 'Stop listening' : 'Start voice input'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+            </button>
+          )}
+          
+          {/* Send Button */}
           <button
             onClick={handleSendMessage}
             disabled={!inputMessage.trim() || isTyping}
@@ -249,8 +443,14 @@ const ChatbotAI = ({ currentMood, onClose }) => {
           </div>
         )}
         
-        <p className="text-xs text-gray-500 mt-2">
-            🤖 Cogni • Adapts to your emotional state • Ask me anything!
+        <p className="text-xs text-gray-500 mt-2 flex items-center justify-between">
+          <span>🤖 Cogni • Adapts to your emotional state</span>
+          {isSpeechSupported && (
+            <span className="flex items-center">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span>
+              Voice ready
+            </span>
+          )}
         </p>
       </div>
     </div>
