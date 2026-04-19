@@ -37,13 +37,16 @@ const Quiz = () => {
   const [timerWarning, setTimerWarning] = useState(false);
 
   useEffect(() => {
-    // Extract topic from quizId
+    // Extract topic from quizId - updated for GK topics
     const topicMap = {
       'javascript-fundamentals': 'JavaScript',
       'react-hooks': 'React',
-      'python-basics': 'Python'
+      'python-basics': 'Python',
+      'world-geography-gk': 'World Geography',
+      'history-trivia-game': 'History Trivia',
+      'science-tech-gk': 'Science & Technology'
     };
-    setTopic(topicMap[quizId] || 'JavaScript');
+    setTopic(topicMap[quizId] || 'General Knowledge');
   }, [quizId]);
 
   useEffect(() => {
@@ -77,7 +80,7 @@ const Quiz = () => {
         "timeLimit": 900,
         "points": 1000,
         "category": "${topic}",
-        "tags": ["${topic}", "Programming"],
+        "tags": ["${topic}", "General Knowledge"],
         "questions": [
           {
             "text": "Question text",
@@ -91,7 +94,7 @@ const Quiz = () => {
           }
         ]
       }
-      Make questions challenging and educational. Include a mix of concept, code, and theory questions.`;
+      Make questions challenging and educational. Include a mix of concept, facts, and interesting trivia questions.`;
 
       const response = await axios.post(`${API_URL}/learning/chat/`, {
         message: prompt,
@@ -122,32 +125,86 @@ const Quiz = () => {
     }
   };
 
-  // Fallback static quiz
+  // Fallback static quiz - updated for GK topics
   const loadFallbackQuiz = () => {
-    const fallbackQuiz = {
-      id: quizId,
-      title: `${topic} Fundamentals`,
+    const fallbackQuizzes = {
+      'world-geography-gk': {
+        title: 'World Geography Challenge',
+        description: 'Test your knowledge of countries, capitals, and landmarks',
+        questions: [
+          {
+            id: 1,
+            text: 'What is the capital of Australia?',
+            options: ['Sydney', 'Melbourne', 'Canberra', 'Perth'],
+            correctAnswer: 2,
+            explanation: 'Canberra is the capital of Australia, chosen as a compromise between Sydney and Melbourne.',
+            difficulty: 'easy',
+            points: 10,
+            hint: 'It\'s not the largest city.'
+          }
+        ]
+      },
+      'history-trivia-game': {
+        title: 'History Trivia Challenge',
+        description: 'Journey through time with historical facts and events',
+        questions: [
+          {
+            id: 1,
+            text: 'In which year did World War II end?',
+            options: ['1944', '1945', '1946', '1947'],
+            correctAnswer: 1,
+            explanation: 'World War II ended in 1945 with the surrender of Japan.',
+            difficulty: 'easy',
+            points: 10,
+            hint: 'It was in the mid-1940s.'
+          }
+        ]
+      },
+      'science-tech-gk': {
+        title: 'Science & Technology Quiz',
+        description: 'Explore the wonders of science and technological advancements',
+        questions: [
+          {
+            id: 1,
+            text: 'What is the chemical symbol for gold?',
+            options: ['Go', 'Gd', 'Au', 'Ag'],
+            correctAnswer: 2,
+            explanation: 'Au is the chemical symbol for gold, derived from the Latin word "aurum".',
+            difficulty: 'easy',
+            points: 10,
+            hint: 'It comes from Latin.'
+          }
+        ]
+      }
+    };
+
+    const fallbackQuiz = fallbackQuizzes[quizId] || {
+      title: `${topic} Quiz`,
       description: `Test your knowledge of ${topic}`,
+      questions: [
+        {
+          id: 1,
+          text: `What is an interesting fact about ${topic}?`,
+          options: ['Fact 1', 'Fact 2', 'Fact 3', 'All of the above'],
+          correctAnswer: 3,
+          explanation: `${topic} has many fascinating aspects.`,
+          difficulty: 'easy',
+          points: 10,
+          hint: 'Think broadly.'
+        }
+      ]
+    };
+
+    setQuiz({
+      ...fallbackQuiz,
+      id: quizId,
       timeLimit: 600,
       difficulty: difficulty,
       points: 500,
       category: topic,
-      tags: [topic],
-      questions: [
-        {
-          id: 1,
-          text: `What is ${topic} primarily used for?`,
-          options: ['Web Development', 'Mobile Apps', 'Data Science', 'All of the above'],
-          correctAnswer: 3,
-          explanation: `${topic} is a versatile language used in many areas.`,
-          difficulty: 'easy',
-          points: 10,
-          hint: 'Think about its common applications.'
-        }
-      ]
-    };
-    setQuiz(fallbackQuiz);
-    setTimeLeft(fallbackQuiz.timeLimit);
+      tags: [topic, 'General Knowledge']
+    });
+    setTimeLeft(600);
   };
 
   const startQuiz = () => {
@@ -329,6 +386,19 @@ Provide a helpful explanation about why this answer is ${answerIndex === questio
     return colors[diff] || 'text-gray-400';
   };
 
+  // Updated emoji logic for GK topics
+  const getTopicEmoji = (topicName) => {
+    const emojiMap = {
+      'JavaScript': '📜',
+      'React': '⚛️',
+      'Python': '🐍',
+      'World Geography': '🌍',
+      'History Trivia': '🏛️',
+      'Science & Technology': '🔬'
+    };
+    return emojiMap[topicName] || '🧠';
+  };
+
   if (generating) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -356,7 +426,7 @@ Provide a helpful explanation about why this answer is ${answerIndex === questio
         <div className="max-w-3xl w-full glass rounded-2xl p-8">
           <div className="text-center mb-8">
             <div className="text-6xl mb-4 animate-bounce">
-              {topic === 'JavaScript' ? '📜' : topic === 'React' ? '⚛️' : '🐍'}
+              {getTopicEmoji(topic)}
             </div>
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
               {topic} Quiz

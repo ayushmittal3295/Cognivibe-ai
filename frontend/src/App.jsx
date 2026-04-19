@@ -7,6 +7,9 @@ import SignupPage from './components/SignupPage';
 import Dashboard from './components/Dashboard';
 import LearningModule from './components/LearningModule';
 import Quiz from './components/Quiz';
+import GeographyPuzzle from './components/GeographyPuzzle';
+import HistoryTimeline from './components/HistoryTimeline';
+import ScienceLab from './components/ScienceLab';
 import Scene3D from './3d/Scene3D';
 
 function App() {
@@ -61,6 +64,18 @@ function App() {
             <Route 
               path="/quiz/:quizId" 
               element={isAuthenticated ? <Quiz /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/game/geography-puzzle" 
+              element={isAuthenticated ? <GeographyPuzzle /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/game/history-timeline" 
+              element={isAuthenticated ? <HistoryTimeline /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/game/science-lab" 
+              element={isAuthenticated ? <ScienceLab /> : <Navigate to="/login" />} 
             />
             
             {/* Catch all */}

@@ -195,16 +195,18 @@ const Dashboard = () => {
     navigate(`/quiz/${quizId}`);
   };
 
+  // Game navigation handlers
+  const handleGameNavigation = (gameId) => {
+    navigate(`/game/${gameId}`);
+  };
+
   const handleRecommendationClick = (rec) => {
     if (rec.type === 'quiz') {
       // Map recommendation titles to quiz IDs
       const quizMap = {
         'JavaScript': 'javascript-fundamentals',
         'React': 'react-hooks',
-        'Python': 'python-basics',
-        'Advanced JavaScript': 'javascript-fundamentals',
-        'React Hooks': 'react-hooks',
-        'Python Basics': 'python-basics'
+        'Python': 'python-basics'
       };
       
       // Try to find a matching quiz
@@ -472,50 +474,98 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Featured Quizzes Section */}
+          {/* GK Quizzes & Games Section */}
           <div className="glass rounded-2xl p-6">
-            <h2 className="text-xl font-semibold mb-4">Featured Quizzes</h2>
+             <h3 className="text-lg font-semibold mb-4 text-primary-400">🧠 Featured Quizzes</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* JavaScript Quiz Card */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* World Geography Quiz Card */}
               <div 
-                onClick={() => handleQuizNavigation('javascript-fundamentals')}
-                className="bg-gradient-to-br from-yellow-600/20 to-orange-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+                onClick={() => handleQuizNavigation('world-geography-gk')}
+                className="bg-gradient-to-br from-blue-600/20 to-indigo-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
               >
-                <div className="text-3xl mb-2">📜</div>
-                <h3 className="font-semibold">JavaScript</h3>
-                <p className="text-xs text-gray-400 mt-1">Mastery Challenge</p>
+                <div className="text-3xl mb-2">🌍</div>
+                <h3 className="font-semibold">World Geography</h3>
+                <p className="text-xs text-gray-400 mt-1">Explore the Planet</p>
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs text-gray-400">AI Generated</span>
-                  <span className="text-xs bg-yellow-600/30 px-2 py-1 rounded-full">Hard</span>
-                </div>
-              </div>
-              
-              {/* React Quiz Card */}
-              <div 
-                onClick={() => handleQuizNavigation('react-hooks')}
-                className="bg-gradient-to-br from-blue-600/20 to-cyan-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
-              >
-                <div className="text-3xl mb-2">⚛️</div>
-                <h3 className="font-semibold">React Hooks</h3>
-                <p className="text-xs text-gray-400 mt-1">Deep Dive</p>
-                <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs text-gray-400">AI Generated</span>
+                  <span className="text-xs text-gray-400">Fun Facts</span>
                   <span className="text-xs bg-blue-600/30 px-2 py-1 rounded-full">Medium</span>
                 </div>
               </div>
               
-              {/* Python Quiz Card */}
+              {/* History Trivia Game Card */}
               <div 
-                onClick={() => handleQuizNavigation('python-basics')}
-                className="bg-gradient-to-br from-green-600/20 to-emerald-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+                onClick={() => handleQuizNavigation('history-trivia-game')}
+                className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
               >
-                <div className="text-3xl mb-2">🐍</div>
-                <h3 className="font-semibold">Python</h3>
-                <p className="text-xs text-gray-400 mt-1">Fundamentals</p>
+                <div className="text-3xl mb-2">🏛️</div>
+                <h3 className="font-semibold">History Trivia</h3>
+                <p className="text-xs text-gray-400 mt-1">Time Travel Game</p>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs text-gray-400">Interactive</span>
+                  <span className="text-xs bg-amber-600/30 px-2 py-1 rounded-full">Easy</span>
+                </div>
+              </div>
+              
+              {/* Science & Tech GK Card */}
+              <div 
+                onClick={() => handleQuizNavigation('science-tech-gk')}
+                className="bg-gradient-to-br from-green-600/20 to-teal-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+              >
+                <div className="text-3xl mb-2">🔬</div>
+                <h3 className="font-semibold">Science & Tech</h3>
+                <p className="text-xs text-gray-400 mt-1">Modern Discoveries</p>
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-xs text-gray-400">AI Generated</span>
-                  <span className="text-xs bg-green-600/30 px-2 py-1 rounded-full">Easy</span>
+                  <span className="text-xs bg-green-600/30 px-2 py-1 rounded-full">Hard</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Games Section */}
+            <div className="border-t border-gray-700 pt-6">
+              <h3 className="text-lg font-semibold mb-4 text-primary-400">🎮 Interactive Games</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Geography Puzzle Game Card */}
+                <div 
+                  onClick={() => handleGameNavigation('geography-puzzle')}
+                  className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+                >
+                  <div className="text-3xl mb-2">🧩</div>
+                  <h3 className="font-semibold">Geography Puzzle</h3>
+                  <p className="text-xs text-gray-400 mt-1">Map & Country Puzzles</p>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-gray-400">Puzzle Game</span>
+                    <span className="text-xs bg-purple-600/30 px-2 py-1 rounded-full">Fun</span>
+                  </div>
+                </div>
+                
+                {/* History Timeline Game Card */}
+                <div 
+                  onClick={() => handleGameNavigation('history-timeline')}
+                  className="bg-gradient-to-br from-red-600/20 to-orange-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+                >
+                  <div className="text-3xl mb-2">⏳</div>
+                  <h3 className="font-semibold">History Timeline</h3>
+                  <p className="text-xs text-gray-400 mt-1">Sort Historical Events</p>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-gray-400">Timeline Game</span>
+                    <span className="text-xs bg-red-600/30 px-2 py-1 rounded-full">Challenging</span>
+                  </div>
+                </div>
+                
+                {/* Science Lab Game Card */}
+                <div 
+                  onClick={() => handleGameNavigation('science-lab')}
+                  className="bg-gradient-to-br from-cyan-600/20 to-blue-600/20 rounded-lg p-4 cursor-pointer hover:scale-105 transition-transform"
+                >
+                  <div className="text-3xl mb-2">🧪</div>
+                  <h3 className="font-semibold">Science Lab</h3>
+                  <p className="text-xs text-gray-400 mt-1">Virtual Experiments</p>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-gray-400">Lab Game</span>
+                    <span className="text-xs bg-cyan-600/30 px-2 py-1 rounded-full">Educational</span>
+                  </div>
                 </div>
               </div>
             </div>

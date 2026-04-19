@@ -33,7 +33,7 @@ const LearningModule = () => {
   const loadContent = async () => {
     setLoading(true);
     
-    // Get personalized content from AI
+    // Get personalized content from AI - updated for GK topics
     const path = await fetchPersonalizedContent(topic);
     const generatedContent = ContentGenerator.generateContent(
       topic,
@@ -61,7 +61,7 @@ const LearningModule = () => {
     // Calculate score
     const score = calculateScore();
     
-    // Submit quiz result
+    // Submit quiz result - updated for GK topics
     useStore.getState().submitQuizResult({
       quizType: topic,
       score,
@@ -81,6 +81,19 @@ const LearningModule = () => {
     return (correct / content.quiz.totalQuestions) * 100;
   };
 
+  // Updated topic display names for GK
+  const getDisplayTopic = (topicSlug) => {
+    const topicNames = {
+      'javascript-fundamentals': 'JavaScript Fundamentals',
+      'react-hooks': 'React Hooks',
+      'python-basics': 'Python Basics',
+      'world-geography-gk': 'World Geography',
+      'history-trivia-game': 'History Trivia',
+      'science-tech-gk': 'Science & Technology'
+    };
+    return topicNames[topicSlug] || topicSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -94,7 +107,7 @@ const LearningModule = () => {
       <div className="min-h-screen p-8">
         <div className="max-w-4xl mx-auto">
           <div className="glass rounded-2xl p-8">
-            <h2 className="text-3xl font-bold mb-6">Quiz: {topic}</h2>
+            <h2 className="text-3xl font-bold mb-6">Quiz: {getDisplayTopic(topic)}</h2>
             <p className="text-gray-400 mb-8">Test your knowledge</p>
             
             <div className="space-y-6">
