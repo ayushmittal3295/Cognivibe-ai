@@ -90,73 +90,38 @@ const login = async (req, res) => {
   }
 };
 
-const verifyFirebaseIdToken = async (idToken) => {
-  const apiKey = process.env.FIREBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error('FIREBASE_API_KEY is not configured in backend .env');
-  }
-
-  const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken })
-    }
-  );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error?.message || 'Invalid Firebase ID token');
-  }
-
-  const data = await response.json();
-  const userRecord = data.users?.[0];
-  if (!userRecord || !userRecord.email) {
-    throw new Error('Invalid Firebase token payload');
-  }
-
-  return userRecord;
-};
-
-const loginWithGoogle = async (req, res) => {
+const googleLogin = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+    const { email, name, avatar } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Google login requires an email' });
     }
-
-    const { idToken } = req.body;
-    const payload = await verifyFirebaseIdToken(idToken);
-
-    const email = payload.email;
-    const name = payload.displayName || email.split('@')[0];
-    const avatar = payload.photoUrl || null;
 
     let user = await User.findOne({ where: { email } });
     if (!user) {
+      const randomPassword = Math.random().toString(36).slice(-10) + Date.now().toString(36);
       user = await User.create({
         email,
-        name,
-        password: Math.random().toString(36).slice(-12),
-        avatar
+        name: name || 'Google User',
+        avatar: avatar || null,
+        password: randomPassword
       });
+    } else {
+      await user.update({ lastActive: new Date() });
     }
-
-    await user.update({ lastActive: new Date() });
 
     const token = generateToken(user);
     const userData = user.toJSON();
     delete userData.password;
 
     res.json({
-      message: 'Login successful',
+      message: 'Google login successful',
       token,
       user: userData
     });
   } catch (error) {
     console.error('Google login error:', error);
-    res.status(500).json({ message: error.message || 'Error during Google login' });
+    res.status(500).json({ message: 'Error during Google login' });
   }
 };
 
@@ -201,7 +166,7 @@ const updateProfile = async (req, res) => {
 module.exports = {
   signup,
   login,
-  loginWithGoogle,
+  googleLogin,
   getProfile,
   updateProfile
 };

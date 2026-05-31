@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { signup, login, loginWithGoogle, getProfile, updateProfile } = require('../controllers/auth.controller');
+const { signup, login, getProfile, updateProfile, googleLogin } = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 
 const router = express.Router();
@@ -17,14 +17,10 @@ const loginValidation = [
   body('password').notEmpty()
 ];
 
-const googleLoginValidation = [
-  body('idToken').notEmpty()
-];
-
 // Routes
 router.post('/signup', signupValidation, signup);
 router.post('/login', loginValidation, login);
-router.post('/login/google', googleLoginValidation, loginWithGoogle);
+router.post('/google', googleLogin);
 router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, updateProfile);
 

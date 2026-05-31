@@ -1,8 +1,6 @@
-import { signInWithPopup } from 'firebase/auth';
 import gsap from 'gsap';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth, googleProvider } from '../firebaseConfig';
 import { useStore } from '../store/useStore';
 
 const LoginPage = () => {
@@ -55,32 +53,20 @@ const LoginPage = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
 
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = result?.user ? await result.user.getIdToken() : null;
-
-      if (!idToken) {
-        throw new Error('Unable to get Google token');
-      }
-
-      const success = await googleLogin(idToken);
-      if (success) {
-        gsap.to('.login-card', {
-          opacity: 0,
-          y: -50,
-          duration: 0.5,
-          onComplete: () => navigate('/dashboard')
-        });
-      } else {
-        throw new Error('Google sign-in failed');
-      }
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-      setError(error.message || 'Google sign-in failed');
+    const success = await googleLogin();
+    if (success) {
+      gsap.to('.login-card', {
+        opacity: 0,
+        y: -50,
+        duration: 0.5,
+        onComplete: () => navigate('/dashboard')
+      });
+    } else {
+      setError('Google login failed. Please try again.');
       setLoading(false);
     }
   };
@@ -226,12 +212,7 @@ const LoginPage = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-gray-800/50 border border-gray-700 rounded-lg hover:bg-gray-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <button onClick={handleGoogleLogin} className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-gray-800/50 border border-gray-700 rounded-lg hover:bg-gray-700/50 transition-colors">
                 <span className="text-lg text-blue-400">G</span>
                 <span className="text-sm text-gray-300">Google</span>
               </button>

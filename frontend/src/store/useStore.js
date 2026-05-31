@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../firebaseConfig';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -56,20 +58,6 @@ export const useStore = create(
         }
       },
 
-      googleLogin: async (idToken) => {
-        set({ loading: true, error: null });
-        try {
-          const response = await axiosInstance.post('/auth/login/google', { idToken });
-          const { token, user } = response.data;
-          localStorage.setItem('token', token);
-          set({ user, token, isAuthenticated: true, loading: false });
-          return true;
-        } catch (error) {
-          set({ error: error.response?.data?.message || 'Google login failed', loading: false });
-          return false;
-        }
-      },
-
       signup: async (name, email, password) => {
         set({ loading: true, error: null });
         try {
@@ -80,6 +68,27 @@ export const useStore = create(
           return true;
         } catch (error) {
           set({ error: error.response?.data?.message || 'Signup failed', loading: false });
+          return false;
+        }
+      },
+
+      googleLogin: async () => {
+        set({ loading: true, error: null });
+        try {
+          const result = await signInWithPopup(auth, googleProvider);
+          const userInfo = result.user;
+          const response = await axiosInstance.post('/auth/google', {
+            email: userInfo.email,
+            name: userInfo.displayName || 'Google User',
+            avatar: userInfo.photoURL || null
+          });
+          const { token, user } = response.data;
+          localStorage.setItem('token', token);
+          set({ user, token, isAuthenticated: true, loading: false });
+          return true;
+        } catch (error) {
+          console.error('Google login failed:', error);
+          set({ error: error.response?.data?.message || 'Google login failed', loading: false });
           return false;
         }
       },

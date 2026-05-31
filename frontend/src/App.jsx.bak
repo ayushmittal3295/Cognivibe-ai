@@ -1,0 +1,63 @@
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useStore } from './store/useStore';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import LearningModule from './components/LearningModule';
+import Quiz from './components/Quiz';
+import Scene3D from './3d/Scene3D';
+
+function App() {
+  const { isAuthenticated, checkAuth } = useStore();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const init = async () => {
+      await checkAuth();
+      setLoading(false);
+    };
+    init();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <div className="relative min-h-screen">
+        {/* 3D Background */}
+        <Scene3D />
+        
+        {/* Main Content */}
+        <div className="relative z-10">
+          <Routes>
+            <Route 
+              path="/login" 
+              element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} 
+            />
+            <Route 
+              path="/dashboard" 
+              element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/learn/:topic" 
+              element={isAuthenticated ? <LearningModule /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/quiz/:quizId" 
+              element={isAuthenticated ? <Quiz /> : <Navigate to="/login" />} 
+            />
+            <Route path="/" element={<Navigate to="/dashboard" />} />
+          </Routes>
+        </div>
+      </div>
+    </Router>
+  );
+}
+
+export default App;
